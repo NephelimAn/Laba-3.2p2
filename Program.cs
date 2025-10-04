@@ -53,38 +53,60 @@ class Program
         }
     }
 
-    static void InputTariff()
+   static void InputTariff()
+{
+    Console.Clear();
+    Console.WriteLine("=== Ввод тарифа ===");
+
+    // Выбор типа груза
+    Console.WriteLine("Выберите тип груза:");
+    var types = Enum.GetValues(typeof(CargoType)).Cast<CargoType>().ToList();
+    for (int i = 0; i < types.Count; i++)
     {
-        Console.Clear();
-        Console.WriteLine("=== Ввод тарифа ===");
-
-        // Выбор типа груза
-        Console.WriteLine("Выберите тип груза:");
-        var types = Enum.GetValues(typeof(CargoType)).Cast<CargoType>().ToList();
-        for (int i = 0; i < types.Count; i++)
-        {
-            Console.WriteLine($"{i + 1}. {types[i]}");
-        }
-
-        int typeIndex;
-        while (!int.TryParse(Console.ReadLine(), out typeIndex) || typeIndex < 1 || typeIndex > types.Count)
-        {
-            Console.Write("Неверный ввод. Повторите: ");
-        }
-        CargoType selectedType = types[typeIndex - 1];
-
-        // Ввод цены
-        decimal price;
-        Console.Write("Введите цену за единицу объема (например, за м³): ");
-        while (!decimal.TryParse(Console.ReadLine(), out price) || price < 0)
-        {
-            Console.Write("Цена должна быть неотрицательным числом. Повторите: ");
-        }
-
-        company.AddTariff(new Tariff(selectedType, price));
-        Console.WriteLine("Тариф добавлен успешно!");
-        Console.ReadKey();
+        Console.WriteLine($"{i + 1}. {types[i]}");
     }
+
+    int typeIndex;
+    while (!int.TryParse(Console.ReadLine(), out typeIndex) || typeIndex < 1 || typeIndex > types.Count)
+    {
+        Console.Write("Неверный ввод. Повторите: ");
+    }
+    CargoType selectedType = types[typeIndex - 1];
+
+    // Ввод цены с ограничениями
+    const decimal MIN_PRICE = 0.01m;
+    const decimal MAX_PRICE = 1_000_000m; // 1 миллион — разумный максимум
+
+    decimal price;
+    Console.Write($"Введите цену за единицу объема (от {MIN_PRICE} до {MAX_PRICE:C}): ");
+    while (true)
+    {
+        string input = Console.ReadLine();
+        if (!decimal.TryParse(input, out price))
+        {
+            Console.Write("Неверный формат числа. Повторите: ");
+            continue;
+        }
+
+        if (price < MIN_PRICE)
+        {
+            Console.Write($"Цена не может быть меньше {MIN_PRICE:C}. Повторите: ");
+            continue;
+        }
+
+        if (price > MAX_PRICE)
+        {
+            Console.Write($"Цена не может превышать {MAX_PRICE:C}. Повторите: ");
+            continue;
+        }
+
+        break;
+    }
+
+    company.AddTariff(new Tariff(selectedType, price));
+    Console.WriteLine("Тариф добавлен успешно!");
+    Console.ReadKey();
+}
 
     static void RegisterClient()
     {
@@ -112,73 +134,102 @@ class Program
     }
 
     static void CreateOrder()
+{
+    Console.Clear();
+    Console.WriteLine("=== Создание заказа ===");
+
+    var clients = company.GetClients();
+    if (clients.Count == 0)
     {
-        Console.Clear();
-        Console.WriteLine("=== Создание заказа ===");
-
-        var clients = company.GetClients();
-        if (clients.Count == 0)
-        {
-            Console.WriteLine("Нет зарегистрированных клиентов!");
-            Console.ReadKey();
-            return;
-        }
-
-        Console.WriteLine("Выберите клиента:");
-        for (int i = 0; i < clients.Count; i++)
-        {
-            Console.WriteLine($"{i + 1}. {clients[i].Name} ({clients[i].Phone})");
-        }
-
-        int clientIndex;
-        while (!int.TryParse(Console.ReadLine(), out clientIndex) || clientIndex < 1 || clientIndex > clients.Count)
-        {
-            Console.Write("Неверный выбор. Повторите: ");
-        }
-        Client selectedClient = clients[clientIndex - 1];
-
-        // Выбор типа груза
-        var tariffs = company.GetTariffs();
-        if (tariffs.Count == 0)
-        {
-            Console.WriteLine("Нет доступных тарифов! Сначала добавьте тариф.");
-            Console.ReadKey();
-            return;
-        }
-
-        Console.WriteLine("Выберите тип груза:");
-        var types = tariffs.Select(t => t.Type).Distinct().ToList();
-        for (int i = 0; i < types.Count; i++)
-        {
-            Console.WriteLine($"{i + 1}. {types[i]}");
-        }
-
-        int typeIndex;
-        while (!int.TryParse(Console.ReadLine(), out typeIndex) || typeIndex < 1 || typeIndex > types.Count)
-        {
-            Console.Write("Неверный выбор. Повторите: ");
-        }
-        CargoType selectedType = types[typeIndex - 1];
-
-        // Ввод объема
-        double volume;
-        Console.Write("Введите объем груза (в м³): ");
-        while (!double.TryParse(Console.ReadLine(), out volume) || volume <= 0)
-        {
-            Console.Write("Объем должен быть положительным числом. Повторите: ");
-        }
-
-        try
-        {
-            company.CreateOrder(selectedClient, selectedType, volume);
-            Console.WriteLine("Заказ создан успешно!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка: {ex.Message}");
-        }
+        Console.WriteLine("Нет зарегистрированных клиентов!");
         Console.ReadKey();
+        return;
     }
+
+    Console.WriteLine("Выберите клиента:");
+    for (int i = 0; i < clients.Count; i++)
+    {
+        Console.WriteLine($"{i + 1}. {clients[i].Name} ({clients[i].Phone})");
+    }
+
+    int clientIndex;
+    while (!int.TryParse(Console.ReadLine(), out clientIndex) || clientIndex < 1 || clientIndex > clients.Count)
+    {
+        Console.Write("Неверный выбор. Повторите: ");
+    }
+    Client selectedClient = clients[clientIndex - 1];
+
+    var tariffs = company.GetTariffs();
+    if (tariffs.Count == 0)
+    {
+        Console.WriteLine("Нет доступных тарифов! Сначала добавьте тариф.");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.WriteLine("Выберите тип груза:");
+    var types = tariffs.Select(t => t.Type).Distinct().ToList();
+    for (int i = 0; i < types.Count; i++)
+    {
+        Console.WriteLine($"{i + 1}. {types[i]}");
+    }
+
+    int typeIndex;
+    while (!int.TryParse(Console.ReadLine(), out typeIndex) || typeIndex < 1 || typeIndex > types.Count)
+    {
+        Console.Write("Неверный выбор. Повторите: ");
+    }
+    CargoType selectedType = types[typeIndex - 1];
+
+    // Ввод объёма с ограничениями
+    const double MIN_VOLUME = 0.01;
+    const double MAX_VOLUME = 10_000.0; // 10 000 м³ — максимум (например, для железнодорожного состава)
+
+    double volume;
+    Console.Write($"Введите объем груза в м³ (от {MIN_VOLUME} до {MAX_VOLUME}): ");
+    while (true)
+    {
+        string input = Console.ReadLine();
+        if (!double.TryParse(input, out volume))
+        {
+            Console.Write("Неверный формат числа. Повторите: ");
+            continue;
+        }
+
+        if (volume < MIN_VOLUME)
+        {
+            Console.Write($"Объём не может быть меньше {MIN_VOLUME} м³. Повторите: ");
+            continue;
+        }
+
+        if (volume > MAX_VOLUME)
+        {
+            Console.Write($"Объём не может превышать {MAX_VOLUME} м³. Повторите: ");
+            continue;
+        }
+
+        // Дополнительная проверка: не приведёт ли объём * цена к переполнению decimal?
+        var tariff = tariffs.First(t => t.Type == selectedType);
+        if (volume > (double)(decimal.MaxValue / tariff.PricePerUnit))
+        {
+            Console.Write($"Слишком большой объём: итоговая стоимость превысит допустимый предел. Макс. объём для этого тарифа: {(double)(decimal.MaxValue / tariff.PricePerUnit):F2} м³. Повторите: ");
+            continue;
+        }
+
+        break;
+    }
+
+    try
+    {
+        company.CreateOrder(selectedClient, selectedType, volume);
+        Console.WriteLine("Заказ создан успешно!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Ошибка: {ex.Message}");
+    }
+    Console.ReadKey();
+}
 
     static void ShowClientTotal()
     {
